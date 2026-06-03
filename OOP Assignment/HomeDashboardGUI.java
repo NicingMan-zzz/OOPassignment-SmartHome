@@ -6,8 +6,7 @@ import javax.swing.border.*;
 public class HomeDashboardGUI extends JFrame {
     private HomeManagerEngine coreEngine;
 
-    private JTextArea displayPanelLog;
-    private JTextField deviceIdInput;
+    private JList<SmartDevice> deviceJList; 
     private JTextField configurationValueInput;
     private JButton actionTogglePower;
     private JButton actionApplyConfig;
@@ -32,17 +31,20 @@ public class HomeDashboardGUI extends JFrame {
         titleLabel.setBorder(new EmptyBorder(15, 10, 5, 10));
         add(titleLabel, BorderLayout.NORTH);
 
-        displayPanelLog = new JTextArea();
-        displayPanelLog.setEditable(false);
-        displayPanelLog.setFont(new Font("Monospaced", Font.PLAIN, 13));
-        displayPanelLog.setBackground(new Color(245, 250, 255));
-        displayPanelLog.setForeground(new Color(20, 20, 60));
-        displayPanelLog.setBorder(new EmptyBorder(8, 8, 8, 8));
+        deviceJList = new JList<>(coreEngine.getDeviceModel());
+        deviceJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        deviceJList.setFont(new Font("Monospaced", Font.PLAIN, 13));
+        deviceJList.setBackground(new Color(245, 250, 255));
+        deviceJList.setForeground(new Color(20, 20, 60));
+        
+        if (coreEngine.getDeviceModel().size() > 0) {
+            deviceJList.setSelectedIndex(0);
+        }
 
-        JScrollPane scrollPane = new JScrollPane(displayPanelLog);
+        JScrollPane scrollPane = new JScrollPane(deviceJList);
         scrollPane.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createLineBorder(new Color(100, 140, 220), 1),
-            "Device Status",
+            "Select a Device to Control",
             TitledBorder.LEFT,
             TitledBorder.TOP,
             new Font("Arial", Font.BOLD, 13),
@@ -51,7 +53,7 @@ public class HomeDashboardGUI extends JFrame {
         scrollPane.setBackground(new Color(230, 240, 255));
         add(scrollPane, BorderLayout.CENTER);
 
-        JPanel controlPanel = new JPanel(new GridLayout(3, 2, 8, 8));
+        JPanel controlPanel = new JPanel(new GridLayout(2, 2, 8, 8));
         controlPanel.setBackground(new Color(210, 225, 250));
         controlPanel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createTitledBorder(
@@ -64,17 +66,6 @@ public class HomeDashboardGUI extends JFrame {
             ),
             new EmptyBorder(6, 8, 8, 8)
         ));
-
-        JLabel deviceLabel = new JLabel("Device ID:");
-        deviceLabel.setFont(new Font("Arial", Font.BOLD, 13));
-        deviceLabel.setForeground(new Color(30, 60, 130));
-        controlPanel.add(deviceLabel);
-
-        deviceIdInput = new JTextField();
-        deviceIdInput.setFont(new Font("Arial", Font.PLAIN, 13));
-        deviceIdInput.setBackground(Color.WHITE);
-        deviceIdInput.setBorder(BorderFactory.createLineBorder(new Color(100, 140, 220)));
-        controlPanel.add(deviceIdInput);
 
         JLabel valueLabel = new JLabel("Temperature / Brightness:");
         valueLabel.setFont(new Font("Arial", Font.BOLD, 13));
@@ -108,31 +99,28 @@ public class HomeDashboardGUI extends JFrame {
         DashboardEventHandler clickRouter = new DashboardEventHandler();
         actionTogglePower.addActionListener(clickRouter);
         actionApplyConfig.addActionListener(clickRouter);
-
-        refreshConsoleDisplay();
     }
 
-    private void refreshConsoleDisplay() {
-        displayPanelLog.setText(coreEngine.generateSystemSummaryText());
+    private void refreshListDisplay() {
+        deviceJList.repaint();
     }
 
     private class DashboardEventHandler implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent event) {
-            String targetID = deviceIdInput.getText().trim();
-            SmartDevice targetDevice = coreEngine.lookupDevice(targetID);
+            SmartDevice targetDevice = deviceJList.getSelectedValue();
 
             if (targetDevice == null) {
                 JOptionPane.showMessageDialog(HomeDashboardGUI.this,
-                    "Device ID '" + targetID + "' was not found.\nPlease check the ID and try again.",
-                    "Device Not Found",
+                    "Please select a device from the list above first.",
+                    "No Device Selected",
                     JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
             if (event.getSource() == actionTogglePower) {
                 targetDevice.togglePower();
-                refreshConsoleDisplay();
+                refreshListDisplay();
 
                 String state = targetDevice.getStatus() ? "ON" : "OFF";
                 JOptionPane.showMessageDialog(HomeDashboardGUI.this,
@@ -144,7 +132,7 @@ public class HomeDashboardGUI extends JFrame {
                 try {
                     double value = Double.parseDouble(configurationValueInput.getText().trim());
                     targetDevice.adjustSettings(value);
-                    refreshConsoleDisplay();
+                    refreshListDisplay();
                     configurationValueInput.setText("");
 
                     JOptionPane.showMessageDialog(HomeDashboardGUI.this,
